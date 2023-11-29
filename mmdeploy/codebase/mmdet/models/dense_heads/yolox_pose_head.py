@@ -13,9 +13,8 @@ from mmdeploy.mmcv.ops import multiclass_nms
 from mmdeploy.utils import Backend, get_backend
 
 
-@FUNCTION_REWRITER.register_rewriter(
-    func_name='mmyolo.models.dense_heads.'
-    'yoloxpose_head.YOLOXPoseHead.predict_by_feat')
+@FUNCTION_REWRITER.register_rewriter(func_name='models.yolox_pose_head.'
+                                     'YOLOXPoseHead.predict_by_feat')
 def yoloxpose_head__predict_by_feat(self,
                                     cls_scores: List[Tensor],
                                     bbox_preds: List[Tensor],

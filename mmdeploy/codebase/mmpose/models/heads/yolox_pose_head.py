@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 import torch
 from torch import Tensor
 
+from mmdet.models.utils import filter_scores_and_topk
 from mmdeploy.codebase.mmdet import get_post_processing_params
 from mmdeploy.core import FUNCTION_REWRITER
 from mmdeploy.mmcv.ops.nms import multiclass_nms
@@ -100,15 +101,30 @@ def predict(self,
     keep_top_k = cfg.get('max_per_img', post_params.keep_top_k)
 
     # do nms
-    _, _, nms_indices = multiclass_nms(
-        bboxes,
-        scores,
-        max_output_boxes_per_class,
-        iou_threshold,
-        score_threshold,
-        pre_top_k=pre_top_k,
-        keep_top_k=keep_top_k,
-        output_index=True)
+    multi_label = cfg.multi_label
+    multi_label &= self.num_classes > 1
+    
+    if cfg.multi_label is False:
+        scores, labels = scores.max(1, keepdim=True)
+        scores, _, nms_indices, results = filter_scores_and_topk(
+            scores,
+            score_threshold,
+            pre_top_k,
+            results=dict(labels=labels[:, 0]))
+        labels = results['labels']
+    else:
+        scores, labels, nms_indices, _ = filter_scores_and_topk(
+            scores, score_threshold, pre_top_k)
+    
+    # _, _, nms_indices = multiclass_nms(
+    #     bboxes,
+    #     scores,
+    #     max_output_boxes_per_class,
+    #     iou_threshold,
+    #     score_threshold,
+    #     pre_top_k=pre_top_k,
+    #     keep_top_k=keep_top_k,
+    #     output_index=True)
 
     batch_inds = torch.arange(num_imgs, device=scores.device).view(-1, 1)
     dets = torch.cat([bboxes, scores], dim=2)
